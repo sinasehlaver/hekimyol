@@ -1,0 +1,105 @@
+slug: abdominal_pain
+title: Karın Ağrısı
+version: 1
+# TASLAK — hekim onayı bekliyor.
+source: >-
+  Türk Cerrahi Derneği akut batın kılavuzu + T.C. Sağlık Bakanlığı acil triyaj
+  algoritmaları + Yargıtay tıbbi malpraktis kararları (atlanmış apandisit /
+  dış gebelik / mezenter iskemi / AAA içtihadı).
+start: q_severe_sudden
+
+nodes:
+  q_severe_sudden:
+    type: question
+    text: "Karın ağrısı aniden ve çok şiddetli mi başladı, ya da karnınız tahta gibi sert ve dokunulamayacak kadar ağrılı mı?"
+    options:
+      - {label: "Evet", next: o_acil, risk_flag: akut_batin}
+      - {label: "Hayır", next: q_bleeding_shock}
+
+  q_bleeding_shock:
+    type: question
+    text: "Şunlardan biri var mı? (kan kusma veya siyah/katran gibi dışkı, bayılma/göz kararması, soğuk terleme, kalpte çarpıntı)"
+    options:
+      - {label: "Evet", next: o_acil, risk_flag: kanama_sok}
+      - {label: "Hayır", next: q_pregnancy}
+
+  q_pregnancy:
+    type: question
+    text: "Gebe olma ihtimaliniz var mı veya son 3 ayda regl gecikmesi oldu mu? (Erkekseniz veya kesinlikle ilgisizse 'Hayır' seçin.)"
+    options:
+      - {label: "Evet / mümkün", next: o_acil, risk_flag: dis_gebelik_supheli}
+      - {label: "Hayır / ilgisiz", next: q_rlq_fever}
+
+  q_rlq_fever:
+    type: question
+    text: "Ağrı göbek çevresinden başlayıp sağ alt karına mı yerleşti ve/veya ateş, bulantı-kusma, iştahsızlık eşlik ediyor mu?"
+    options:
+      - {label: "Evet", next: o_bugun, risk_flag: apandisit_supheli}
+      - {label: "Hayır", next: q_duration}
+
+  q_duration:
+    type: question
+    text: "Ağrı ne kadar zamandır var?"
+    options:
+      - {label: "24 saatten kısa, giderek artıyor", next: o_bugun}
+      - {label: "Birkaç gündür benzer şiddette", next: q_alarm}
+      - {label: "Haftalardır aralıklı", next: o_planli}
+
+  q_alarm:
+    type: question
+    text: "Son haftalarda istemsiz kilo kaybı, gece uyandıran ağrı, yutma güçlüğü veya dışkıda kan fark ettiniz mi?"
+    options:
+      - {label: "Evet", next: o_bugun, risk_flag: alarm_semptom}
+      - {label: "Hayır", next: o_planli}
+
+  o_acil:
+    type: outcome
+    urgency: acil
+    department: "Acil Servis (Genel Cerrahi)"
+    patient_advice: >-
+      Belirtileriniz acil cerrahi değerlendirme gerektiren bir durumu
+      düşündürüyor. Bir şey yiyip içmeyin, ağrı kesici almayın ve hemen 112'yi
+      arayın veya en yakın acil servise gidin.
+    bring:
+      - "Kullandığınız ilaçların listesi"
+      - "Son adet tarihi (kadınlar için)"
+      - "Varsa önceki karın ameliyatı / görüntüleme kayıtları"
+    differential:
+      - "Akut batın (perforasyon, tıkanma)"
+      - "Dış gebelik rüptürü"
+      - "Mezenter iskemi / abdominal aort anevrizması"
+      - "Gastrointestinal kanama"
+
+  o_bugun:
+    type: outcome
+    urgency: 24_saat
+    department: "Genel Cerrahi veya Acil Servis"
+    patient_advice: >-
+      Ağrınızın apandisit gibi cerrahi bir nedeni olabilir; 24 saat içinde
+      mutlaka bir hekime muayene olun. Ağrı sağ alt karına oturursa, ateşiniz
+      yükselirse veya kusma artarsa beklemeden acile gidin. O zamana kadar aç
+      kalın.
+    bring:
+      - "Ağrının başlangıç saati ve nasıl yer değiştirdiği notu"
+      - "Ateş ölçümleri"
+    differential:
+      - "Akut apandisit"
+      - "Divertikülit"
+      - "Over kisti / torsiyon"
+      - "Safra kesesi iltihabı"
+
+  o_planli:
+    type: outcome
+    urgency: planli
+    department: "Gastroenteroloji veya Aile Hekimliği"
+    patient_advice: >-
+      Uzun süredir devam eden, şiddeti değişmeyen karın ağrıları genellikle acil
+      değildir ancak araştırılması gerekir. Birkaç gün içinde aile hekiminize
+      başvurun; ağrı aniden şiddetlenir, ateş veya kusma eklenirse acile gidin.
+    bring:
+      - "Ağrıyı artıran/azaltan durumlar, beslenme ve dışkılama düzeni notu"
+    differential:
+      - "İrritabl bağırsak sendromu"
+      - "Gastrit / ülser"
+      - "Kronik kabızlık"
+      - "Laktoz intoleransı"

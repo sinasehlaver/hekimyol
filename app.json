@@ -1,0 +1,12 @@
+{
+  "name": "hekimyol",
+  "description": "Patient-facing Turkish symptom intake -> deterministic triage -> doctor pre-report",
+  "addons": ["heroku-postgresql:essential-0"],
+  "env": {
+    "DOCTOR_KEY": {
+      "description": "Shared secret doctors use to read pre-consult reports",
+      "generator": "secret"
+    },
+    "HEKIMYOL_LLM": { "value": "stub" }
+  }
+}

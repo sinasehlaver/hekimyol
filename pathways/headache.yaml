@@ -1,0 +1,92 @@
+slug: headache
+title: Baş Ağrısı
+version: 1
+# TASLAK — hekim onayı bekliyor.
+source: >-
+  Türk Nöroloji Derneği baş ağrısı kılavuzu + T.C. Sağlık Bakanlığı acil triyaj
+  algoritmaları + Yargıtay tıbbi malpraktis kararları (atlanmış subaraknoid
+  kanama / menenjit / kitle içtihadı).
+start: q_thunderclap
+
+nodes:
+  q_thunderclap:
+    type: question
+    text: "Baş ağrısı saniyeler-dakikalar içinde patlar tarzda, 'hayatımın en şiddetli baş ağrısı' diyebileceğiniz kadar aniden mi başladı?"
+    options:
+      - {label: "Evet", next: o_acil, risk_flag: gok_gurultusu}
+      - {label: "Hayır", next: q_neuro}
+
+  q_neuro:
+    type: question
+    text: "Şunlardan biri var mı? (kolda/bacakta güçsüzlük veya uyuşma, konuşma bozukluğu, çift/bulanık görme, dengesizlik, bilinç bulanıklığı, bayılma)"
+    options:
+      - {label: "Evet, en az biri var", next: o_acil, risk_flag: fokal_bulgu}
+      - {label: "Hayır", next: q_fever}
+
+  q_fever:
+    type: question
+    text: "Ateş ile birlikte ense sertliği (çenenizi göğsünüze değdirmekte zorlanma) veya ciltte hızla yayılan döküntü var mı?"
+    options:
+      - {label: "Evet", next: o_acil, risk_flag: menenjit_supheli}
+      - {label: "Hayır", next: q_redflag_bg}
+
+  q_redflag_bg:
+    type: question
+    text: "Şunlardan biri sizin için geçerli mi? (50 yaş üstünde yeni başlayan baş ağrısı, bağışıklık baskılayıcı ilaç/kanser öyküsü, son 2 haftada kafa travması, hamilelik/yeni doğum yapmış olmak)"
+    options:
+      - {label: "Evet", next: o_bugun, risk_flag: yuksek_risk_zemin}
+      - {label: "Hayır", next: q_pattern}
+
+  q_pattern:
+    type: question
+    text: "Bu baş ağrısı sizin daha önce yaşadığınız baş ağrılarına benziyor mu?"
+    options:
+      - {label: "Evet, bildiğim türden bir ağrı", next: o_planli}
+      - {label: "Hayır, farklı / giderek kötüleşiyor", next: o_bugun, risk_flag: yeni_patern}
+
+  o_acil:
+    type: outcome
+    urgency: acil
+    department: "Acil Servis"
+    patient_advice: >-
+      Belirtileriniz beyin veya beyin zarını ilgilendiren acil bir durumu
+      düşündürüyor. Vakit kaybetmeden 112'yi arayın veya en yakın acil servise
+      gidin; tek başınıza gitmeyin.
+    bring:
+      - "Kullandığınız ilaçların listesi"
+      - "Ağrının tam olarak ne zaman ve nasıl başladığı notu"
+    differential:
+      - "Subaraknoid kanama"
+      - "Menenjit / ensefalit"
+      - "İnme / geçici iskemik atak"
+
+  o_bugun:
+    type: outcome
+    urgency: 24_saat
+    department: "Nöroloji"
+    patient_advice: >-
+      Acil bir tehlike işareti yok ancak baş ağrınızın özellikleri 24 saat
+      içinde nöroloji değerlendirmesi gerektiriyor. Ağrı şiddetlenir, kusma veya
+      nörolojik belirti eklenirse acile başvurun.
+    bring:
+      - "Baş ağrısı günlüğü / ne zaman başladığı"
+      - "Kullandığınız ilaçlar"
+    differential:
+      - "Yeni başlangıçlı primer baş ağrısı"
+      - "İlaç aşırı kullanımı baş ağrısı"
+      - "Sekonder baş ağrısı (araştırılmalı)"
+
+  o_planli:
+    type: outcome
+    urgency: planli
+    department: "Aile Hekimliği (gerekirse Nöroloji sevki)"
+    patient_advice: >-
+      Ağrınız daha önce yaşadıklarınıza benziyor ve acil bir bulgu yok. Birkaç
+      gün içinde aile hekiminize başvurun; ağrı sıklığı/şiddeti artarsa nöroloji
+      sevki isteyin. Ağrı kesicileri haftada 2 günden fazla kullanmayın.
+    bring:
+      - "Kaç gündür, ayda kaç kez, hangi ilaçla geçtiği notu"
+    differential:
+      - "Migren"
+      - "Gerilim tipi baş ağrısı"
+      - "Sinüzit kaynaklı baş ağrısı"

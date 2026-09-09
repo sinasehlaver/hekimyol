@@ -1,0 +1,104 @@
+slug: dyspnea
+title: Nefes Darlığı
+version: 1
+# TASLAK — hekim onayı bekliyor.
+source: >-
+  Türk Toraks Derneği + Türk Kardiyoloji Derneği kılavuzları + T.C. Sağlık
+  Bakanlığı acil triyaj algoritmaları + Yargıtay tıbbi malpraktis kararları
+  (atlanmış pulmoner emboli / kalp yetmezliği / anafilaksi içtihadı).
+start: q_rest
+
+nodes:
+  q_rest:
+    type: question
+    text: "Şu anda dinlenirken bile nefes almakta zorlanıyor musunuz veya konuşurken cümlelerinizi tamamlayamıyor musunuz?"
+    options:
+      - {label: "Evet", next: o_acil, risk_flag: istirahat_dispnesi}
+      - {label: "Hayır, sadece hareketle oluyor", next: q_associated}
+
+  q_associated:
+    type: question
+    text: "Şunlardan biri eşlik ediyor mu? (göğüs ağrısı, dudak/parmaklarda morarma, öksürükle kan gelmesi, bayılma hissi)"
+    options:
+      - {label: "Evet, en az biri var", next: o_acil, risk_flag: eslik_eden_kirmizi_bayrak}
+      - {label: "Hayır", next: q_onset}
+
+  q_onset:
+    type: question
+    text: "Nefes darlığı nasıl başladı?"
+    options:
+      - {label: "Aniden, dakikalar içinde", next: q_pe_risk, risk_flag: ani_baslangic}
+      - {label: "Son birkaç gün içinde giderek", next: q_swelling}
+      - {label: "Haftalar-aylardır yavaş yavaş", next: o_planli}
+
+  q_pe_risk:
+    type: question
+    text: "Son 4 hafta içinde ameliyat, uzun süreli yatak istirahati, uzun yolculuk oldu mu ya da bacağınızın birinde şişlik/ağrı var mı?"
+    options:
+      - {label: "Evet", next: o_acil, risk_flag: pe_riski}
+      - {label: "Hayır", next: o_bugun}
+
+  q_swelling:
+    type: question
+    text: "Bacaklarınızda/ayak bileklerinizde şişlik var mı ya da gece düz yatınca nefesiniz daralıp oturmak zorunda mı kalıyorsunuz?"
+    options:
+      - {label: "Evet", next: o_bugun, risk_flag: kalp_yetmezligi_supheli}
+      - {label: "Hayır", next: q_wheeze}
+
+  q_wheeze:
+    type: question
+    text: "Nefes verirken hırıltı/ıslık sesi oluyor mu; astım veya KOAH tanınız var mı?"
+    options:
+      - {label: "Evet", next: o_bugun}
+      - {label: "Hayır", next: o_bugun}
+
+  o_acil:
+    type: outcome
+    urgency: acil
+    department: "Acil Servis"
+    patient_advice: >-
+      Nefes darlığınız acil bir durumu düşündürüyor. Kendiniz araç kullanmayın;
+      hemen 112'yi arayın veya en yakın acil servise gidin. Oturur pozisyonda
+      bekleyin.
+    bring:
+      - "Kullandığınız ilaçların ve varsa inhaler/oksijen cihazının listesi"
+      - "Varsa önceki akciğer filmi, solunum testi, kalp raporları"
+    differential:
+      - "Pulmoner emboli"
+      - "Akut kalp yetmezliği / akciğer ödemi"
+      - "Şiddetli astım / KOAH atağı"
+      - "Anafilaksi"
+
+  o_bugun:
+    type: outcome
+    urgency: 24_saat
+    department: "Göğüs Hastalıkları veya Kardiyoloji"
+    patient_advice: >-
+      Acil bir tehlike işareti yok ancak nefes darlığınızın nedeni 24 saat
+      içinde araştırılmalı. Bugün göğüs hastalıkları veya kardiyoloji
+      polikliniğine başvurun. Dinlenirken de nefes darlığı başlar, göğüs ağrısı
+      veya morarma olursa acile gidin.
+    bring:
+      - "Ne zaman başladığı, neyle arttığı, kaç kat merdiven çıkabildiğiniz notu"
+      - "Kullandığınız ilaçlar"
+    differential:
+      - "Astım / KOAH"
+      - "Erken kalp yetmezliği"
+      - "Pnömoni / bronşit"
+      - "Anemi"
+
+  o_planli:
+    type: outcome
+    urgency: planli
+    department: "Aile Hekimliği (gerekirse Göğüs Hastalıkları sevki)"
+    patient_advice: >-
+      Uzun sürede yavaşça gelişen nefes darlığı genellikle acil değildir ama
+      değerlendirilmelidir. Birkaç gün içinde aile hekiminize başvurun. Belirti
+      hızla kötüleşirse daha erken başvurun.
+    bring:
+      - "Sigara öyküsü, mesleki maruziyet, egzersiz kapasitesindeki değişim notu"
+    differential:
+      - "Kondisyon kaybı / kilo artışı"
+      - "Erken KOAH"
+      - "Kansızlık"
+      - "Tiroid işlev bozukluğu"

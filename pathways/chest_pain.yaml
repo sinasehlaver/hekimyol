@@ -1,0 +1,103 @@
+slug: chest_pain
+title: Göğüs Ağrısı
+version: 1
+# TASLAK — hekim onayı bekliyor. Kaynak taslağı; yayına almadan önce baba (hekim) +
+# uzmanlık derneği kılavuzu ile doğrulanacak.
+source: >-
+  Türk Kardiyoloji Derneği akut koroner sendrom kılavuzu + T.C. Sağlık Bakanlığı
+  acil triyaj algoritmaları + Yargıtay 13. HD tıbbi malpraktis kararları (atlanmış
+  Mİ / pulmoner emboli / aort diseksiyonu içtihadı).
+start: q_now
+
+nodes:
+  q_now:
+    type: question
+    text: "Göğüs ağrınız şu anda devam ediyor mu?"
+    options:
+      - {label: "Evet, şu anda ağrım var", next: q_features, risk_flag: aktif_agri}
+      - {label: "Hayır, geçti", next: q_when_stopped}
+
+  q_when_stopped:
+    type: question
+    text: "Ağrı en son ne zaman vardı?"
+    options:
+      - {label: "Son 24 saat içinde", next: q_features}
+      - {label: "1 günden daha önce", next: q_features}
+
+  q_features:
+    type: question
+    text: "Ağrıya bunlardan biri eşlik ediyor mu? (nefes darlığı, soğuk terleme, sol kola/çeneye yayılma, bayılma hissi)"
+    options:
+      - {label: "Evet, en az biri var", next: o_acil, risk_flag: iskemik_ozellik}
+      - {label: "Hayır, hiçbiri yok", next: q_tearing}
+
+  q_tearing:
+    type: question
+    text: "Ağrı aniden, çok şiddetli ve 'yırtılır/kopar' tarzda mı başladı ya da sırtınıza vuruyor mu?"
+    options:
+      - {label: "Evet", next: o_acil, risk_flag: diseksiyon_supheli}
+      - {label: "Hayır", next: q_risk}
+
+  q_risk:
+    type: question
+    text: "Şu risklerden biri sizde var mı? (kalp hastalığı öyküsü, şeker hastalığı, 45 yaş üstü erkek / 55 yaş üstü kadın, son bir haftada uzun yolculuk veya ameliyat)"
+    options:
+      - {label: "Evet, en az biri var", next: o_bugun, risk_flag: risk_faktoru}
+      - {label: "Hayır", next: q_pleuritic}
+
+  q_pleuritic:
+    type: question
+    text: "Ağrı sadece nefes alıp verirken veya belirli bir hareketle mi oluyor, elle bastırınca artıyor mu?"
+    options:
+      - {label: "Evet, nefes/hareket/bası ile değişiyor", next: o_planli}
+      - {label: "Hayır", next: o_bugun}
+
+  o_acil:
+    type: outcome
+    urgency: acil
+    department: "Acil Servis"
+    patient_advice: >-
+      Belirtileriniz kalbi veya büyük damarları ilgilendiren acil bir durumu
+      düşündürüyor. Kendiniz araç kullanmayın; hemen 112'yi arayın veya en yakın
+      acil servise gidin.
+    bring:
+      - "Kullandığınız tüm ilaçların listesi"
+      - "Varsa önceki EKG, efor testi, anjiyo sonuçları"
+      - "Kimliğiniz ve varsa özel sigorta bilgisi"
+    differential:
+      - "Akut koroner sendrom (kalp krizi)"
+      - "Pulmoner emboli"
+      - "Aort diseksiyonu"
+
+  o_bugun:
+    type: outcome
+    urgency: 24_saat
+    department: "Kardiyoloji"
+    patient_advice: >-
+      Acil bir tehlike işareti saptanmadı ancak ağrının kalp kaynaklı olup
+      olmadığı 24 saat içinde bir hekim tarafından değerlendirilmelidir. Bugün
+      kardiyoloji polikliniğine başvurun; ağrı şiddetlenir, yayılır veya nefes
+      darlığı eklenirse acile gidin.
+    bring:
+      - "Kullandığınız ilaçların listesi"
+      - "Varsa önceki kalp tetkikleri"
+    differential:
+      - "Stabil anjina"
+      - "Kas-iskelet kaynaklı göğüs ağrısı"
+      - "Reflü / özofagus spazmı"
+
+  o_planli:
+    type: outcome
+    urgency: planli
+    department: "Göğüs Hastalıkları veya Aile Hekimliği"
+    patient_advice: >-
+      Ağrınızın nefes alma ve hareketle değişmesi çoğunlukla kas-iskelet veya
+      akciğer zarı kaynaklıdır ve genellikle acil değildir. Birkaç gün içinde
+      aile hekiminize ya da göğüs hastalıkları polikliniğine başvurun. Ateş,
+      öksürükle kan veya giderek artan nefes darlığı olursa daha erken başvurun.
+    bring:
+      - "Şikâyetin ne zaman başladığı ve neyle arttığı notu"
+    differential:
+      - "Kostokondrit / kas-iskelet ağrısı"
+      - "Plörezi"
+      - "Viral üst solunum yolu enfeksiyonu sonrası ağrı"

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hekimyol — Şikâyet Değerlendirme</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>hekimyol</h1>
+  <p class="sub">Şikâyetinizi anlatın, sizi doğru bölüme yönlendirelim.</p>
+  <div class="disclaimer" id="disclaimer"></div>
+
+  <!-- Step 1: consent + complaint -->
+  <div class="card" id="intake">
+    <label class="consent">
+      <input type="checkbox" id="c1">
+      <span>Sağlık verilerimin (şikâyetlerim, yanıtlarım) bu değerlendirme için
+      işlenmesine <b>açık rıza</b> gösteriyorum. (KVKK m.6)</span>
+    </label>
+    <label class="consent">
+      <input type="checkbox" id="c2">
+      <span>Oluşturulacak ön değerlendirme raporunun, başvuracağım hekimin
+      erişebilmesi için saklanmasına <b>açık rıza</b> gösteriyorum.</span>
+    </label>
+    <p class="sub" style="margin:4px 0 14px">Bu onaylar birbirinden bağımsızdır ve
+      istediğiniz zaman geri çekebilirsiniz. Kimlik bilgileriniz (ad, TC no,
+      telefon) rapora yazılmadan önce otomatik olarak çıkarılır.</p>
+    <textarea id="complaint" placeholder="Örn: iki saattir göğsümde baskı var, sol koluma yayılıyor..."></textarea>
+    <div style="margin-top:12px"><button id="startBtn" disabled>Devam et</button></div>
+    <div class="err" id="intakeErr"></div>
+  </div>
+
+  <!-- Step 1b: pathway picker fallback -->
+  <div class="card" id="picker" hidden>
+    <div class="qtext">Şikâyetinizi hangi başlık en iyi tanımlıyor?</div>
+    <div id="pickerOpts"></div>
+  </div>
+
+  <!-- Step 2: questions -->
+  <div class="card" id="qcard" hidden>
+    <div class="qtext" id="qtext"></div>
+    <div id="qopts"></div>
+  </div>
+
+  <!-- Step 3: outcome -->
+  <div class="card" id="outcome" hidden>
+    <div><span class="badge" id="urg"></span></div>
+    <h1 style="margin-top:12px" id="dept"></h1>
+    <p id="advice"></p>
+    <div id="bringWrap" hidden><b>Yanınıza alın:</b><ul id="bring"></ul></div>
+    <p class="sub" id="reportLine" style="margin-top:16px"></p>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let complaintDeidPending = "";
+let sessionId = null;
+
+async function api(path, body, method="POST") {
+  const r = await fetch(path, {method, headers:{"content-type":"application/json"},
+    body: body ? JSON.stringify(body) : undefined});
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || ("HTTP " + r.status));
+  return data;
+}
+
+(async () => {
+  const m = await api("/api/meta", null, "GET");
+  $("#disclaimer").textContent = m.disclaimer;
+})();
+
+function consentOk() { return $("#c1").checked && $("#c2").checked; }
+[$("#c1"), $("#c2")].forEach(c => c.addEventListener("change",
+  () => $("#startBtn").disabled = !consentOk()));
+
+$("#startBtn").addEventListener("click", () => start(null));
+
+async function start(pathwaySlug) {
+  $("#intakeErr").textContent = "";
+  const complaint = $("#complaint").value.trim();
+  if (!complaint) { $("#intakeErr").textContent = "Lütfen şikâyetinizi yazın."; return; }
+  try {
+    const d = await api("/api/session", {
+      consent: {health_data: $("#c1").checked, store_report: $("#c2").checked},
+      complaint, pathway_slug: pathwaySlug,
+    });
+    if (d.needs_pathway) { showPicker(d.pathways); return; }
+    $("#intake").hidden = true; $("#picker").hidden = true;
+    sessionId = d.session_id;
+    render(d);
+  } catch (e) { $("#intakeErr").textContent = e.message; }
+}
+
+function showPicker(list) {
+  $("#picker").hidden = false;
+  const box = $("#pickerOpts"); box.innerHTML = "";
+  list.forEach(p => {
+    const b = document.createElement("button");
+    b.className = "opt"; b.textContent = p.title;
+    b.onclick = () => start(p.slug);
+    box.appendChild(b);
+  });
+}
+
+async function answer(idx) {
+  try {
+    const d = await api(`/api/session/${sessionId}/answer`, {option_idx: idx});
+    render(d);
+  } catch (e) { alert(e.message); }
+}
+
+function render(d) {
+  if (!d.done) {
+    $("#qcard").hidden = false; $("#outcome").hidden = true;
+    $("#qtext").textContent = d.text;
+    const box = $("#qopts"); box.innerHTML = "";
+    d.options.forEach((label, i) => {
+      const b = document.createElement("button");
+      b.className = "opt"; b.textContent = label; b.onclick = () => answer(i);
+      box.appendChild(b);
+    });
+    return;
+  }
+  $("#qcard").hidden = true; $("#outcome").hidden = false;
+  const urg = $("#urg");
+  urg.className = "badge " + d.urgency;
+  urg.textContent = {acil:"ACİL", "24_saat":"24 SAAT İÇİNDE", planli:"PLANLI"}[d.urgency] || d.urgency;
+  $("#dept").textContent = d.department;
+  $("#advice").textContent = d.advice;
+  if (d.bring && d.bring.length) {
+    $("#bringWrap").hidden = false;
+    $("#bring").innerHTML = d.bring.map(x => `<li>${x}</li>`).join("");
+  }
+  if (d.report_id) {
+    $("#reportLine").innerHTML = `Hekiminizin okuması için rapor kodunuz: <b>${d.report_id}</b>`;
+  }
+}
+</script>
+</body>
+</html>
