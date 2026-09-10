@@ -4,37 +4,257 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>hekimyol — Hekim Konsolu</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="wrap">
-  <h1>hekimyol — Hekim Konsolu</h1>
-  <p class="sub">Hastanın verdiği rapor kodu ile ön konsültasyon raporunu görüntüleyin.
-    Her görüntüleme KVKK gereği kayıt altına alınır.</p>
+  <div class="brand">
+    <svg class="mark" width="38" height="38" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="bm" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#14958A"/><stop offset="1" stop-color="#0B5D55"/>
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="16" fill="url(#bm)"/>
+      <path d="M10 34h9l5-13 8 25 6-17 3.5 5H54" fill="none" stroke="#fff"
+            stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p class="brand-name">hekimyol<span class="dot">.</span></p>
+  </div>
+  <h1>Hekim Konsolu</h1>
+  <p class="sub">Rapor kodunu girin veya QR'ı okutun. Her görüntüleme KVKK gereği
+    kayıt altına alınır.</p>
   <div class="card">
-    <input type="password" id="key" placeholder="Hekim anahtarı" autocomplete="off">
-    <input type="text" id="rid" placeholder="Rapor kodu (UUID)" style="margin-top:10px">
-    <div style="margin-top:12px"><button id="go">Raporu getir</button></div>
+    <input type="text" id="rid" placeholder="Rapor kodu (UUID)">
+    <div class="doc-actions">
+      <button id="go">Raporu getir</button>
+      <button type="button" class="tb" id="scanBtn">QR ile tara</button>
+    </div>
     <div class="err" id="err"></div>
   </div>
   <div class="card" id="out" hidden>
     <p class="sub" id="meta"></p>
-    <pre id="md"></pre>
+    <article class="report" id="md"></article>
   </div>
 </div>
+
+<!-- ---------- QR scan pane ---------- -->
+<div class="modal-back" id="scanBack" hidden>
+  <div class="modal card" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+    <h1 id="scanTitle">QR kodu okut</h1>
+    <p class="sub">Kamerayı rapor QR koduna tutun. Kamera yoksa aşağıdan bir
+      fotoğraf yükleyebilirsiniz.</p>
+    <div id="reader" class="qr-reader"></div>
+    <div class="err" id="scanErr"></div>
+    <label class="qr-upload">
+      <span>veya bir fotoğraf yükleyin</span>
+      <input type="file" id="qrFile" accept="image/*" capture="environment">
+    </label>
+    <div class="modal-actions">
+      <button class="tb" id="scanClose">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-$("#go").addEventListener("click", async () => {
+
+/* ---------- report renderer ----------
+   Hand-rolled on purpose: the markdown comes from one server-side template
+   (app/llm.py `report()`) and uses exactly six constructs — `#`/`##` headings,
+   a `>` disclaimer, `**Label:**` fields, a numbered "N. q / → a ⚠️ flag" trail,
+   a `-` bullet fact list and a plain footnote. Everything is escaped before it
+   is injected, so the de-identified free-text complaint can never inject HTML.
+   No markdown library, no CDN dependency, no build step. */
+
+const URG_LABEL = {acil: "ACİL", "24_saat": "24 SAAT İÇİNDE", planli: "PLANLI"};
+
+const _ESC = {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"};
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => _ESC[c]);
+// escape first, then the only inline construct the template emits
+const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+function renderReport(md) {
+  const lines = String(md || "").replace(/\r\n/g, "\n").split("\n");
+  const out = [];
+  let i = 0, m;
+
+  while (i < lines.length) {
+    const ln = lines[i];
+    if (!ln.trim()) { i++; continue; }
+
+    if ((m = ln.match(/^#\s+(.*)$/))) {
+      out.push(`<h1 class="rp-title">${inline(m[1])}</h1>`); i++; continue;
+    }
+    if ((m = ln.match(/^##\s+(.*)$/))) {
+      out.push(`<h2 class="rp-h2">${inline(m[1])}</h2>`); i++; continue;
+    }
+
+    // > disclaimer -> soft amber callout
+    if (/^>\s?/.test(ln)) {
+      const buf = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) buf.push(lines[i++].replace(/^>\s?/, ""));
+      out.push(`<div class="rp-note">${inline(buf.join(" "))}</div>`);
+      continue;
+    }
+
+    // "N. question" + indented "   → answer  ⚠️ flag" -> numbered answer trail
+    if (/^\d+\.\s/.test(ln)) {
+      const items = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        const q = lines[i++].replace(/^\d+\.\s+/, "");
+        const ans = [];
+        while (i < lines.length && /^\s+→\s?/.test(lines[i])) ans.push(lines[i++].replace(/^\s+→\s?/, ""));
+        items.push([q, ans.join(" ")]);
+      }
+      out.push(`<ol class="rp-trail">` + items.map(([q, a]) => {
+        let flag = "";
+        const fm = a.match(/\s*⚠️\s*(.+)$/);
+        if (fm) {
+          flag = `<span class="rp-flag">${inline(fm[1].trim())}</span>`;
+          a = a.slice(0, fm.index);
+        }
+        return `<li><div class="rp-q">${inline(q)}</div>` +
+               `<div class="rp-a">${inline(a.trim())}${flag}</div></li>`;
+      }).join("") + `</ol>`);
+      continue;
+    }
+
+    // "- **Label:** value" -> the Sonuç fact block
+    if (/^-\s+/.test(ln)) {
+      const rows = [];
+      while (i < lines.length && /^-\s+/.test(lines[i])) rows.push(lines[i++].replace(/^-\s+/, ""));
+      out.push(`<dl class="rp-facts">` + rows.map(r => {
+        const lm = r.match(/^\*\*(.+?):\*\*\s*(.*)$/);
+        if (!lm) return `<div class="rp-row"><dd>${inline(r)}</dd></div>`;
+        const key = lm[1], val = (lm[2] || "").trim();
+        // low-effort upgrade: the urgency value becomes the shared .badge component
+        const v = (/^aciliyet$/i.test(key) && URG_LABEL[val])
+          ? `<span class="badge ${val}">${URG_LABEL[val]}</span>`
+          : inline(lm[2]);
+        return `<div class="rp-row"><dt>${inline(key)}</dt><dd>${v}</dd></div>`;
+      }).join("") + `</dl>`);
+      continue;
+    }
+
+    // "**Label:** value" on its own line -> quiet callout (the de-id complaint)
+    if ((m = ln.match(/^\*\*(.+?):\*\*\s*(.*)$/))) {
+      out.push(`<div class="rp-quiet"><span class="rp-label">${inline(m[1])}</span>` +
+               `<p>${inline(m[2])}</p></div>`);
+      i++; continue;
+    }
+
+    const buf = [];
+    while (i < lines.length && lines[i].trim() && !/^(#|>|-\s|\d+\.\s|\*\*)/.test(lines[i])) {
+      buf.push(lines[i++]);
+    }
+    out.push(`<p class="rp-p">${inline(buf.join(" "))}</p>`);
+  }
+  return out.join("\n");
+}
+
+// ---------- report fetch (no auth: the report id is the credential) ----------
+async function fetchReport() {
   $("#err").textContent = "";
+  const btn = $("#go");
+  btn.classList.add("loading"); btn.disabled = true;
   try {
-    const r = await fetch("/api/report/" + encodeURIComponent($("#rid").value.trim()),
-      {headers: {"x-doctor-key": $("#key").value}});
+    const r = await fetch("/api/report/" + encodeURIComponent($("#rid").value.trim()));
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || ("HTTP " + r.status));
     $("#out").hidden = false;
     $("#meta").textContent = `Oturum ${d.session_id} · oluşturulma ${d.created_at}`;
-    $("#md").textContent = d.markdown;
-  } catch (e) { $("#err").textContent = e.message; }
+    $("#md").innerHTML = renderReport(d.markdown);
+  } catch (e) {
+    $("#err").textContent = e.message;
+  } finally {
+    btn.classList.remove("loading"); btn.disabled = false;
+  }
+}
+$("#go").addEventListener("click", fetchReport);
+$("#rid").addEventListener("keydown", e => { if (e.key === "Enter") fetchReport(); });
+
+// ---------- ?rid= prefill (QR codes encode a /doctor?rid=… link) ----------
+const qsRid = new URLSearchParams(location.search).get("rid");
+if (qsRid) {
+  $("#rid").value = qsRid.trim();
+  fetchReport();
+}
+
+// ---------- QR scan pane ----------
+// html5-qrcode from the CDN. Degrades in three steps: live camera → (no camera /
+// permission denied) message + photo upload → (no library at all) button hidden.
+let qr = null;
+
+function ridFrom(text) {
+  const raw = String(text || "").trim();
+  try {
+    const u = new URL(raw);
+    return (u.searchParams.get("rid") ||
+            u.pathname.split("/").filter(Boolean).pop() || raw).trim();
+  } catch (e) {
+    return raw;   // not a URL — the payload is the id itself
+  }
+}
+
+async function stopCamera() {
+  if (!qr) return;
+  try { await qr.stop(); } catch (e) { /* never started */ }
+  try { qr.clear(); } catch (e) { /* ignore */ }
+  qr = null;
+}
+
+async function closeScan() {
+  await stopCamera();
+  $("#scanBack").hidden = true;
+}
+
+function onDecoded(text) {
+  $("#rid").value = ridFrom(text);
+  closeScan().then(fetchReport);
+}
+
+$("#scanBtn").addEventListener("click", async () => {
+  if (typeof Html5Qrcode === "undefined") {
+    $("#err").textContent = "QR kitaplığı yüklenemedi (çevrimdışı olabilirsiniz).";
+    return;
+  }
+  $("#scanErr").textContent = "";
+  $("#scanBack").hidden = false;
+  qr = new Html5Qrcode("reader");
+  try {
+    await qr.start({facingMode: "environment"}, {fps: 10, qrbox: 220},
+                   onDecoded, () => {});
+  } catch (e) {
+    // no camera / permission denied / insecure origin — upload still works
+    $("#scanErr").textContent =
+      "Kamera açılamadı (izin verilmemiş veya cihaz yok). Fotoğraf yükleyebilirsiniz.";
+  }
+});
+
+$("#scanClose").addEventListener("click", closeScan);
+$("#scanBack").addEventListener("click", e => { if (e.target.id === "scanBack") closeScan(); });
+
+$("#qrFile").addEventListener("change", async e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  $("#scanErr").textContent = "";
+  await stopCamera();
+  try {
+    const inst = new Html5Qrcode("reader");
+    const text = await inst.scanFile(file, true);
+    try { inst.clear(); } catch (err) { /* ignore */ }
+    onDecoded(text);
+  } catch (err) {
+    $("#scanErr").textContent = "Fotoğrafta QR kodu bulunamadı.";
+  } finally {
+    e.target.value = "";
+  }
 });
 </script>
 </body>

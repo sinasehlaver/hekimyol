@@ -1,0 +1,3 @@
+# Test-only deps. NOT installed on Heroku (Procfile/release use requirements.txt).
+-r requirements.txt
+httpx      # fastapi.testclient.TestClient transport (tests/test_admin.py)

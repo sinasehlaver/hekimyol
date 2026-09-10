@@ -1,10 +1,20 @@
 {
   "name": "hekimyol",
   "description": "Patient-facing Turkish symptom intake -> deterministic triage -> doctor pre-report",
+  "repository": "https://github.com/sinasehlaver/hekimyol",
+  "stack": "heroku-24",
+  "buildpacks": [{ "url": "heroku/python" }],
   "addons": ["heroku-postgresql:essential-0"],
+  "formation": {
+    "web": { "quantity": 1, "size": "basic" }
+  },
   "env": {
-    "DOCTOR_KEY": {
-      "description": "Shared secret doctors use to read pre-consult reports",
+    "ADMIN_PASSWORD": {
+      "description": "Password for the pathway flow editor (/admin) login",
+      "generator": "secret"
+    },
+    "ADMIN_SECRET": {
+      "description": "HMAC key signing the hk_admin session cookie",
       "generator": "secret"
     },
     "HEKIMYOL_LLM": { "value": "stub" }

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hekimyol — Akış Editörü</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="admin-body">
+
+<!-- ---------- editor (only served to an authenticated hk_admin cookie) ---------- -->
+<div id="app">
+  <header class="adm-top">
+    <div class="adm-brand">
+      <svg class="mark" width="28" height="28" viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="16" fill="#0f766e"/>
+        <path d="M10 34h9l5-13 8 25 6-17 3.5 5H54" fill="none" stroke="#fff"
+              stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">hekimyol<span class="dot">.</span></span>
+      <span class="adm-tag">Akış Editörü</span>
+    </div>
+    <select id="pwSel" class="adm-select" aria-label="Akış seç"></select>
+    <div class="adm-tools">
+      <button class="tb" id="addQ" title="Soru düğümü ekle">+ Soru</button>
+      <button class="tb" id="addO" title="Sonuç düğümü ekle">+ Sonuç</button>
+      <button class="tb" id="mkStart" title="Seçili düğümü başlangıç yap">Başlangıç yap</button>
+      <button class="tb danger" id="delN" title="Seçili düğümü sil">Sil</button>
+      <button class="tb" id="relayout" title="Otomatik yerleşim">Otomatik yerleşim</button>
+    </div>
+    <div class="adm-right">
+      <span class="adm-dirty" id="dirty" hidden>kaydedilmedi</span>
+      <button id="save">Kaydet</button>
+      <button class="tb" id="logout" title="Oturumu kapat">Çıkış</button>
+    </div>
+  </header>
+
+  <div class="adm-main">
+    <div id="canvas" class="adm-canvas"></div>
+    <aside class="adm-side" id="side">
+      <div class="side-empty" id="sideEmpty">
+        <p>Bir düğüme tıklayın.</p>
+        <p class="hint">Bağlantı kurmak için bir çıkış noktasından (sağdaki nokta)
+          hedef düğümün giriş noktasına sürükleyin. Bağlantıyı silmek için üzerine
+          tıklayıp <kbd>Delete</kbd>.</p>
+      </div>
+      <div id="sideForm" hidden></div>
+    </aside>
+  </div>
+
+  <div class="adm-status" id="status"></div>
+</div>
+
+<!-- ---------- save-confirm modal ---------- -->
+<div class="modal-back" id="modal" hidden>
+  <div class="modal card" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h1 id="mTitle">Değişiklikleri kaydet</h1>
+    <p class="sub" id="mSummary"></p>
+    <p class="sub">Onaylamak için akış adını <b><code id="mSlug"></code></b> aynen yazın.
+      Kayıt öncesi mevcut dosyanın zaman damgalı bir yedeği alınır.</p>
+    <input type="text" id="mConfirm" placeholder="akış adı" autocomplete="off" spellcheck="false">
+    <div class="err" id="mErr"></div>
+    <div class="modal-actions">
+      <button class="tb" id="mCancel">Vazgeç</button>
+      <button id="mGo" disabled>Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
+<script src="/static/admin.js"></script>
+</body>
+</html>

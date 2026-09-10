@@ -4,29 +4,34 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>hekimyol — Şikâyet Değerlendirme</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="wrap">
-  <h1>hekimyol</h1>
-  <p class="sub">Şikâyetinizi anlatın, sizi doğru bölüme yönlendirelim.</p>
-  <div class="disclaimer" id="disclaimer"></div>
+  <div class="brand">
+    <svg class="mark" width="38" height="38" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="bm" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#14958A"/><stop offset="1" stop-color="#0B5D55"/>
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="16" fill="url(#bm)"/>
+      <path d="M10 34h9l5-13 8 25 6-17 3.5 5H54" fill="none" stroke="#fff"
+            stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p class="brand-name">hekimyol<span class="dot">.</span></p>
+  </div>
+  <h1>Şikâyetinizi anlatın, sizi doğru bölüme yönlendirelim.</h1>
 
-  <!-- Step 1: consent + complaint -->
+  <!-- Step 1: complaint -->
   <div class="card" id="intake">
-    <label class="consent">
-      <input type="checkbox" id="c1">
-      <span>Sağlık verilerimin (şikâyetlerim, yanıtlarım) bu değerlendirme için
-      işlenmesine <b>açık rıza</b> gösteriyorum. (KVKK m.6)</span>
-    </label>
-    <label class="consent">
-      <input type="checkbox" id="c2">
-      <span>Oluşturulacak ön değerlendirme raporunun, başvuracağım hekimin
-      erişebilmesi için saklanmasına <b>açık rıza</b> gösteriyorum.</span>
-    </label>
-    <p class="sub" style="margin:4px 0 14px">Bu onaylar birbirinden bağımsızdır ve
-      istediğiniz zaman geri çekebilirsiniz. Kimlik bilgileriniz (ad, TC no,
-      telefon) rapora yazılmadan önce otomatik olarak çıkarılır.</p>
+    <p class="sub chips-label">Sık şikâyetler
+      <span class="chips-hint">— ya da aşağıya kendiniz yazın</span></p>
+    <div class="chips" id="startChips"></div>
     <textarea id="complaint" placeholder="Örn: iki saattir göğsümde baskı var, sol koluma yayılıyor..."></textarea>
     <div style="margin-top:12px"><button id="startBtn" disabled>Devam et</button></div>
     <div class="err" id="intakeErr"></div>
@@ -38,10 +43,9 @@
     <div id="pickerOpts"></div>
   </div>
 
-  <!-- Step 2: questions -->
-  <div class="card" id="qcard" hidden>
-    <div class="qtext" id="qtext"></div>
-    <div id="qopts"></div>
+  <!-- Step 2: questions — one screen at a time, swapped in/out -->
+  <div class="card flow" id="qcard" hidden>
+    <div class="stage" id="stage"></div>
   </div>
 
   <!-- Step 3: outcome -->
@@ -51,13 +55,23 @@
     <p id="advice"></p>
     <div id="bringWrap" hidden><b>Yanınıza alın:</b><ul id="bring"></ul></div>
     <p class="sub" id="reportLine" style="margin-top:16px"></p>
+    <div class="qr-tile" id="qrTile" hidden>
+      <div class="qr-frame"><canvas id="qrCanvas"></canvas></div>
+      <p class="qr-cap">Hekiminiz bu kodu okutabilir</p>
+    </div>
   </div>
+
+  <footer class="safety" id="disclaimer"></footer>
 </div>
 
 <script>
 const $ = s => document.querySelector(s);
-let complaintDeidPending = "";
 let sessionId = null;
+let qStep = 0;
+let selectedPathway = null;  // slug from a clicked starting-point chip, or null
+
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SWAP_MS = REDUCED ? 0 : 260;   // must match .screen-out duration in style.css
 
 async function api(path, body, method="POST") {
   const r = await fetch(path, {method, headers:{"content-type":"application/json"},
@@ -69,29 +83,69 @@ async function api(path, body, method="POST") {
 
 (async () => {
   const m = await api("/api/meta", null, "GET");
-  $("#disclaimer").textContent = m.disclaimer;
+  $("#disclaimer").textContent = m.disclaimer ||
+    "Bu bir tanı değildir. Acil durumda 112'yi arayın.";
+  renderChips(m.starting_points || []);
 })();
 
-function consentOk() { return $("#c1").checked && $("#c2").checked; }
-[$("#c1"), $("#c2")].forEach(c => c.addEventListener("change",
-  () => $("#startBtn").disabled = !consentOk()));
+$("#startBtn").addEventListener("click", () => start(selectedPathway));
 
-$("#startBtn").addEventListener("click", () => start(null));
+function renderChips(list) {
+  const box = $("#startChips");
+  box.innerHTML = "";
+  if (!list.length) { box.hidden = true; $(".chips-label").hidden = true; return; }
+  list.forEach(sp => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = sp.label;
+    b.onclick = () => pickChip(b, sp);
+    box.appendChild(b);
+  });
+}
+
+function pickChip(btn, sp) {
+  $("#startChips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+  btn.classList.add("active");
+  selectedPathway = sp.pathway_slug;
+  $("#complaint").value = sp.complaint;   // visible + still editable
+  $("#intakeErr").textContent = "";
+  syncStartBtn();
+  start(selectedPathway);                 // chips start immediately
+}
+
+function syncStartBtn() {
+  $("#startBtn").disabled = !$("#complaint").value.trim();
+}
+
+// Typing over the pre-filled text means the user is on their own words now:
+// drop the remembered pathway so "Devam et" routes from the free text.
+$("#complaint").addEventListener("input", () => {
+  syncStartBtn();
+  if (!selectedPathway) return;
+  selectedPathway = null;
+  $("#startChips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+});
 
 async function start(pathwaySlug) {
   $("#intakeErr").textContent = "";
   const complaint = $("#complaint").value.trim();
   if (!complaint) { $("#intakeErr").textContent = "Lütfen şikâyetinizi yazın."; return; }
+  const btn = $("#startBtn");
+  btn.classList.add("loading"); btn.disabled = true;
   try {
-    const d = await api("/api/session", {
-      consent: {health_data: $("#c1").checked, store_report: $("#c2").checked},
-      complaint, pathway_slug: pathwaySlug,
-    });
+    const d = await api("/api/session", {complaint, pathway_slug: pathwaySlug});
     if (d.needs_pathway) { showPicker(d.pathways); return; }
     $("#intake").hidden = true; $("#picker").hidden = true;
+    qStep = 0;
     sessionId = d.session_id;
     render(d);
-  } catch (e) { $("#intakeErr").textContent = e.message; }
+  } catch (e) {
+    $("#intakeErr").textContent = e.message;
+  } finally {
+    btn.classList.remove("loading");
+    syncStartBtn();
+  }
 }
 
 function showPicker(list) {
@@ -112,19 +166,65 @@ async function answer(idx) {
   } catch (e) { alert(e.message); }
 }
 
+/* One question = one .screen. Answering glides the current screen out to the
+   left while the next one glides in from the right (full swap). */
+function buildScreen(d) {
+  const screen = document.createElement("div");
+  screen.className = "screen";
+
+  const step = document.createElement("p");
+  step.className = "qstep";
+  step.textContent = "Soru " + qStep;
+  screen.appendChild(step);
+
+  const q = document.createElement("div");
+  q.className = d.text.length > 74 ? "qtext long" : "qtext";
+  q.textContent = d.text;
+  screen.appendChild(q);
+
+  const opts = document.createElement("div");
+  opts.className = "qopts";
+  d.options.forEach((label, i) => {
+    const b = document.createElement("button");
+    b.className = "opt"; b.textContent = label;
+    b.onclick = () => { lockScreen(screen); answer(i); };
+    opts.appendChild(b);
+  });
+  screen.appendChild(opts);
+  return screen;
+}
+
+function lockScreen(screen) {
+  screen.querySelectorAll("button").forEach(b => b.disabled = true);
+}
+
+function swapIn(next) {
+  const stage = $("#stage");
+  const prev = stage.querySelector(".screen:not(.screen-out)");
+  if (!prev) { stage.appendChild(next); return; }
+  // Freeze the card height so the swap doesn't jolt the page.
+  stage.style.minHeight = stage.offsetHeight + "px";
+  prev.classList.add("screen-out");
+  setTimeout(() => prev.remove(), SWAP_MS + 40);
+  stage.appendChild(next);
+  requestAnimationFrame(() => { stage.style.minHeight = ""; });
+}
+
 function render(d) {
   if (!d.done) {
     $("#qcard").hidden = false; $("#outcome").hidden = true;
-    $("#qtext").textContent = d.text;
-    const box = $("#qopts"); box.innerHTML = "";
-    d.options.forEach((label, i) => {
-      const b = document.createElement("button");
-      b.className = "opt"; b.textContent = label; b.onclick = () => answer(i);
-      box.appendChild(b);
-    });
+    qStep++;
+    swapIn(buildScreen(d));
     return;
   }
-  $("#qcard").hidden = true; $("#outcome").hidden = false;
+  const stage = $("#stage");
+  const prev = stage.querySelector(".screen:not(.screen-out)");
+  if (prev) {
+    prev.classList.add("screen-out");
+    setTimeout(() => prev.remove(), SWAP_MS + 40);
+  }
+  setTimeout(() => { $("#qcard").hidden = true; }, SWAP_MS);
+  $("#outcome").hidden = false;
   const urg = $("#urg");
   urg.className = "badge " + d.urgency;
   urg.textContent = {acil:"ACİL", "24_saat":"24 SAAT İÇİNDE", planli:"PLANLI"}[d.urgency] || d.urgency;
@@ -135,8 +235,93 @@ function render(d) {
     $("#bring").innerHTML = d.bring.map(x => `<li>${x}</li>`).join("");
   }
   if (d.report_id) {
-    $("#reportLine").innerHTML = `Hekiminizin okuması için rapor kodunuz: <b>${d.report_id}</b>`;
+    showReportCode(d.report_id);
   }
+}
+
+/* ---------- report code: copy button + QR ----------
+   The copy button hands over the RAW id so a doctor can type it into the console;
+   the QR encodes the full /doctor?rid=… link so a scan opens the report directly. */
+
+const CLIP_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+  aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.2"/>
+  <path d="M5.5 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v.5"/></svg>`;
+
+const CHECK_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+  stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+  aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`;
+
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) { /* fall through to the legacy path */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:-1000px;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch (e) {
+    return false;   // no clipboard at all — skip the confirm, code is still readable
+  }
+}
+
+function makeCopyBtn(text) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "copy-btn";
+  b.title = "Rapor kodunu kopyala";
+  b.setAttribute("aria-label", "Rapor kodunu kopyala");
+  b.innerHTML = CLIP_SVG;
+  b.addEventListener("click", async () => {
+    if (!(await copyText(text))) return;
+    b.classList.add("done");
+    b.setAttribute("aria-label", "Rapor kodu kopyalandı");
+    b.innerHTML = CHECK_SVG + `<span class="copy-lbl">kopyalandı</span>`;
+    clearTimeout(b._t);
+    b._t = setTimeout(() => {
+      b.classList.remove("done");
+      b.setAttribute("aria-label", "Rapor kodunu kopyala");
+      b.innerHTML = CLIP_SVG;
+    }, 1500);
+  });
+  return b;
+}
+
+// CDN only (jsDelivr ESM build of the `qrcode` npm package) — no npm, no build step.
+// A failure here just hides the tile; the typed code path is unaffected.
+async function renderQR(rid) {
+  const tile = $("#qrTile");
+  const url = `${location.origin}/doctor?rid=${encodeURIComponent(rid)}`;
+  try {
+    const mod = await import("https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm");
+    await mod.toCanvas($("#qrCanvas"), url, {
+      width: 160, margin: 1, errorCorrectionLevel: "M",
+      color: {dark: "#132a2e", light: "#ffffff"},
+    });
+    tile.hidden = false;
+  } catch (e) {
+    tile.hidden = true;
+  }
+}
+
+function showReportCode(rid) {
+  const line = $("#reportLine");
+  line.textContent = "Hekiminizin okuması için rapor kodunuz: ";
+  const code = document.createElement("b");
+  code.textContent = rid;
+  line.appendChild(code);
+  line.appendChild(makeCopyBtn(rid));
+  renderQR(rid);
 }
 </script>
 </body>

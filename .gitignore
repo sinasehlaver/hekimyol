@@ -5,4 +5,9 @@ __pycache__/
 *.db-shm
 *.db-wal
 .env
+.env.*
+!.env.example
 .DS_Store
+# akış editörü sidecars — klinik dosyanın dışında tutulur
+pathway_backups/
+pathway_layouts/

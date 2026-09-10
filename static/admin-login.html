@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hekimyol — Akış Editörü Girişi</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <svg class="mark" width="38" height="38" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="bm" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#14958A"/><stop offset="1" stop-color="#0B5D55"/>
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="16" fill="url(#bm)"/>
+      <path d="M10 34h9l5-13 8 25 6-17 3.5 5H54" fill="none" stroke="#fff"
+            stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p class="brand-name">hekimyol<span class="dot">.</span></p>
+  </div>
+  <h1>Akış Editörü — Giriş</h1>
+  <p class="sub">Triyaj akış şemalarını düzenlemek için yönetici parolası gerekir.
+    Oturum 12 saat geçerlidir.</p>
+  <div class="card">
+    <input type="password" id="pw" placeholder="Yönetici parolası" autocomplete="current-password">
+    <div style="margin-top:12px"><button id="go">Gir</button></div>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+async function login() {
+  const btn = $("#go");
+  $("#err").textContent = "";
+  btn.classList.add("loading"); btn.disabled = true;
+  try {
+    const r = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({password: $("#pw").value}),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || ("HTTP " + r.status));
+    location.href = "/admin";
+  } catch (e) {
+    $("#err").textContent = e.message;
+  } finally {
+    btn.classList.remove("loading"); btn.disabled = false;
+  }
+}
+$("#go").addEventListener("click", login);
+$("#pw").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+$("#pw").focus();
+</script>
+</body>
+</html>
