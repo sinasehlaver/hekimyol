@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: hekimyol
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: ADMIN_SECRET
+        generateValue: true
+      - key: HEKIMYOL_LLM
+        value: stub
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hekimyol-db
+          property: connectionString
+
+databases:
+  - name: hekimyol-db
+    plan: free
