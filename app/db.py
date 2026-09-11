@@ -12,9 +12,13 @@ from sqlalchemy import String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 _url = os.environ.get("DATABASE_URL", "sqlite:///hekimyol.db")
-# Heroku hands out the legacy "postgres://" scheme; SQLAlchemy 2.x needs "postgresql://".
+# Render/Heroku hand out "postgres://" or "postgresql://"; SQLAlchemy needs the
+# dialect+driver form to pick psycopg3 (the driver actually in requirements.txt) —
+# plain "postgresql://" defaults to psycopg2, which isn't installed.
 if _url.startswith("postgres://"):
-    _url = _url.replace("postgres://", "postgresql://", 1)
+    _url = _url.replace("postgres://", "postgresql+psycopg://", 1)
+elif _url.startswith("postgresql://"):
+    _url = _url.replace("postgresql://", "postgresql+psycopg://", 1)
 
 engine = create_engine(_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
