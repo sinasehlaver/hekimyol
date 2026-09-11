@@ -23,14 +23,32 @@ The intake asks no consent checkboxes — starting the flow is the consent act, 
 de-identification boundary and every audit row (including the `consent` row, written
 as `implied` when no object is sent) are unchanged.
 
+## Requirements
+
+Python 3.12+ (pinned to 3.12.8 for Heroku via `runtime.txt`). Plain FastAPI/SQLAlchemy
+— nothing here shells out to macOS-only tools, so macOS, Linux, and Windows all work;
+the only difference is the venv layout below.
+
 ## Run locally
+
+macOS / Linux:
 
 ```bash
 python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 ADMIN_PASSWORD=dev ./venv/bin/uvicorn app.main:app --reload
-# http://127.0.0.1:8000/         patient widget
-# http://127.0.0.1:8000/doctor   doctor console  (no key; ?rid=<id> prefills, QR scan)
-# http://127.0.0.1:8000/admin    flow editor     (password: dev)
+```
+
+Windows (PowerShell):
+
+```powershell
+python -m venv venv; .\venv\Scripts\pip install -r requirements.txt
+$env:ADMIN_PASSWORD="dev"; .\venv\Scripts\uvicorn app.main:app --reload
+```
+
+```
+http://127.0.0.1:8000/         patient widget
+http://127.0.0.1:8000/doctor   doctor console  (no key; ?rid=<id> prefills, QR scan)
+http://127.0.0.1:8000/admin    flow editor     (password: dev)
 ```
 
 Default DB is `sqlite:///hekimyol.db`. Set `DATABASE_URL` for Postgres. Every env
@@ -43,9 +61,10 @@ to override them. No secret is committed to the repo.
 scripts/verify.sh
 ```
 
-Boots the app on a free port against a throwaway SQLite DB, checks a session starts
-with no `consent` field in the body, runs a full chest-pain flow to an ACİL outcome
-over the HTTP API, checks PII is scrubbed from the stored report, that the report
+macOS/Linux only — it's a bash script (works in Git Bash/WSL on Windows too). Boots
+the app on a free port against a throwaway SQLite DB, checks a session starts with
+no `consent` field in the body, runs a full chest-pain flow to an ACİL outcome over
+the HTTP API, checks PII is scrubbed from the stored report, that the report
 endpoint serves it with no auth header, that the admin API rejects a missing/wrong
 password and accepts the `hk_admin` cookie, and that the KVKK audit rows (including
 `report_access`) were written.
@@ -113,6 +132,8 @@ git'e girmez.
 
 ## Test
 
+macOS / Linux:
+
 ```bash
 ./venv/bin/pip install -r requirements-dev.txt   # httpx — TestClient için
 ./venv/bin/python -m unittest discover -s tests
@@ -120,13 +141,13 @@ git'e girmez.
 ./venv/bin/python -m app.llm      # de-id / router self-check
 ```
 
-## Push to GitHub
+Windows (PowerShell):
 
-```bash
-gh repo create hekimyol --private --source=. --remote=origin --push
-# or, if the repo already exists:
-git remote add origin git@github.com:sinasehlaver/hekimyol.git
-git push -u origin main
+```powershell
+.\venv\Scripts\pip install -r requirements-dev.txt
+.\venv\Scripts\python -m unittest discover -s tests
+.\venv\Scripts\python -m app.engine
+.\venv\Scripts\python -m app.llm
 ```
 
 ## Deploy (Heroku)
