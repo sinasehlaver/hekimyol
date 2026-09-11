@@ -76,6 +76,8 @@ body {
   align-items:center;
   gap:12px;
   margin-bottom:6px;
+  text-decoration:none;
+  color:inherit;
 }
 .brand .mark {
   flex:0 0 auto;
@@ -894,6 +896,10 @@ a { color:var(--primary-ink); text-underline-offset:2px; }
 }
 .adm-brand { display:flex; align-items:center; gap:9px; }
 .adm-brand .brand-name { font-size:19px; }
+.adm-brand-link {
+  display:flex; align-items:center; gap:9px;
+  text-decoration:none; color:inherit;
+}
 .adm-tag {
   font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
   color:var(--primary-ink); background:var(--primary-tint);
@@ -925,6 +931,7 @@ button.tb {
 }
 button.tb:hover { background:var(--primary-tint); border-color:var(--primary); color:var(--primary-ink); filter:none; }
 button.tb.mini { padding:5px 10px; font-size:12.5px; }
+button.tb.home-btn { margin-bottom:14px; }
 button.tb.danger { color:var(--acil-ink); border-color:var(--acil-line); background:var(--acil-tint); }
 button.tb.danger:hover { background:#f9dcd8; border-color:var(--acil); color:var(--acil-ink); }
 

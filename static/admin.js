@@ -58,6 +58,7 @@ $("#logout").addEventListener("click", async () => {
   try { await fetch("/api/admin/logout", {method: "POST"}); } catch (e) { /* ignore */ }
   location.href = "/admin/login";
 });
+$("#homeBtn").addEventListener("click", () => { location.href = "/"; });
 
 async function start() {
   try {

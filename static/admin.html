@@ -17,12 +17,14 @@
 <div id="app">
   <header class="adm-top">
     <div class="adm-brand">
-      <svg class="mark" width="28" height="28" viewBox="0 0 64 64" aria-hidden="true">
-        <rect width="64" height="64" rx="16" fill="#0f766e"/>
-        <path d="M10 34h9l5-13 8 25 6-17 3.5 5H54" fill="none" stroke="#fff"
-              stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span class="brand-name">hekimyol<span class="dot">.</span></span>
+      <a class="adm-brand-link" href="/" aria-label="hekimyol ana sayfa">
+        <svg class="mark" width="28" height="28" viewBox="0 0 64 64" aria-hidden="true">
+          <rect width="64" height="64" rx="16" fill="#0f766e"/>
+          <path d="M10 34h9l5-13 8 25 6-17 3.5 5H54" fill="none" stroke="#fff"
+                stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="brand-name">hekimyol<span class="dot">.</span></span>
+      </a>
       <span class="adm-tag">Akış Editörü</span>
     </div>
     <select id="pwSel" class="adm-select" aria-label="Akış seç"></select>
@@ -36,6 +38,7 @@
     <div class="adm-right">
       <span class="adm-dirty" id="dirty" hidden>kaydedilmedi</span>
       <button id="save">Kaydet</button>
+      <button class="tb" id="homeBtn" title="Ana sayfaya dön">Ana sayfa</button>
       <button class="tb" id="logout" title="Oturumu kapat">Çıkış</button>
     </div>
   </header>
